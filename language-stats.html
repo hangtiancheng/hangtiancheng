@@ -21,7 +21,7 @@
         },
       };
     </script>
-    <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+    <script src="https://code.jquery.com/jquery-4.0.0.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4/dist/chart.umd.js"></script>
   </head>
 
@@ -45,7 +45,6 @@
               rel="noopener"
               class="text-blue-600 hover:underline dark:text-[#58a6ff]"
             ></a>
-            · public repositories, bytes per language
           </p>
         </div>
         <div class="ml-auto flex items-center gap-2.5 flex-wrap">
@@ -113,11 +112,6 @@
         >
           Clear
         </button>
-        <span class="basis-full text-xs text-gray-500 dark:text-[#8b949e]"
-          >Not required for public data. A token raises the API rate limit from
-          60 to 5,000 requests/hour. Stored only in this browser's localStorage
-          and sent only to api.github.com.</span
-        >
       </section>
 
       <div id="banner" class="hidden"></div>
@@ -212,14 +206,6 @@
         <h2 class="m-0 mb-3 text-sm font-semibold">Largest repositories</h2>
         <div id="repos"></div>
       </section>
-
-      <footer
-        class="mt-6 text-xs text-gray-500 flex gap-1.5 flex-wrap dark:text-[#8b949e]"
-      >
-        <span>Data: GitHub REST API</span>·<span>Charts: Chart.js</span>·<span
-          >Updated <span id="updated">–</span></span
-        >·<span>Cached locally for 24 h</span>
-      </footer>
     </main>
 
     <noscript
@@ -242,124 +228,6 @@
       const TOKEN_KEY = "gh-lang-stats-token";
       const CACHE_TTL = 24 * 60 * 60 * 1000;
       const CONCURRENCY = 8;
-
-      /* linguist colors for common languages; anything else gets a hashed hue */
-      const LANG_COLORS = {
-        JavaScript: "#f1e05a",
-        TypeScript: "#3178c6",
-        TSX: "#3178c6",
-        Python: "#3572A5",
-        Go: "#00ADD8",
-        Java: "#b07219",
-        C: "#555555",
-        "C++": "#f34b7d",
-        "C#": "#178600",
-        Rust: "#dea584",
-        Ruby: "#701516",
-        PHP: "#4F5D95",
-        Swift: "#F05138",
-        Kotlin: "#A97BFF",
-        Scala: "#c22d40",
-        Shell: "#89e051",
-        HTML: "#e34c26",
-        CSS: "#563d7c",
-        SCSS: "#c6538c",
-        Sass: "#a53b70",
-        Vue: "#41b883",
-        Svelte: "#ff3e00",
-        Astro: "#ff5a03",
-        Dart: "#00B4AB",
-        Elixir: "#6e4a7e",
-        Erlang: "#B83998",
-        Haskell: "#5e5086",
-        Clojure: "#db5855",
-        Lua: "#000080",
-        Perl: "#0298c3",
-        R: "#198CE7",
-        Julia: "#a270ba",
-        Zig: "#ec915c",
-        Nim: "#ffc200",
-        OCaml: "#ef7a08",
-        "F#": "#b845fc",
-        Groovy: "#4298b8",
-        PowerShell: "#012456",
-        Dockerfile: "#384d54",
-        Makefile: "#427819",
-        CMake: "#DA3434",
-        "Objective-C": "#438eff",
-        "Objective-C++": "#6866fb",
-        Assembly: "#6E4C13",
-        "Vim Script": "#199f4b",
-        TeX: "#3D6117",
-        Markdown: "#083fa1",
-        JSON: "#292929",
-        YAML: "#cb171e",
-        TOML: "#9c4221",
-        XML: "#0060ac",
-        SQL: "#e38c00",
-        Solidity: "#AA6746",
-        Elm: "#60B5CC",
-        CoffeeScript: "#244776",
-        "Jupyter Notebook": "#DA5B0B",
-        MATLAB: "#e16737",
-        Arduino: "#bd79d1",
-        Verilog: "#b2b7f8",
-        VHDL: "#adb2cb",
-        Batchfile: "#C1F12E",
-        Starlark: "#76d275",
-        Bicep: "#519aba",
-        QML: "#44a51c",
-        "Common Lisp": "#3fb68b",
-        Scheme: "#1e4aec",
-        Racket: "#3c5caa",
-        Fortran: "#4d41b1",
-        Prolog: "#74283c",
-        Tcl: "#e4cc98",
-        "Standard ML": "#dc566d",
-        Reason: "#ff5847",
-        WebAssembly: "#04133b",
-        WGSL: "#1a5e9a",
-        Cuda: "#3A4E3A",
-        HCL: "#844FBA",
-        XSLT: "#EB8CEB",
-        PostScript: "#da291c",
-        Processing: "#0096D8",
-        Vala: "#a56de2",
-        "VB.NET": "#945db7",
-        VBScript: "#15dcdc",
-        VBA: "#867db1",
-        Apex: "#1797c0",
-        Raku: "#0000fb",
-        RAML: "#77d9fb",
-        RobotFramework: "#00c0b5",
-        Roff: "#ecdebe",
-        SystemVerilog: "#DAE1C2",
-        Thrift: "#D12127",
-        Twig: "#c1d026",
-        Stylus: "#ff6347",
-        Pug: "#a86454",
-        EJS: "#a91e50",
-        Blade: "#f7523f",
-        Liquid: "#67b8de",
-        Nunjucks: "#3d8137",
-        SVG: "#ff9900",
-        Mermaid: "#ff3670",
-        Gherkin: "#5B2063",
-        AWK: "#c30e9b",
-        sed: "#64b970",
-        Bison: "#6A463F",
-        ANTLR: "#9DC3FF",
-        Yacc: "#4B6C4B",
-        Lex: "#DBCA00",
-        reStructuredText: "#141414",
-        AsciiDoc: "#73a0c5",
-        Org: "#77aa99",
-        INI: "#d1dbe0",
-        PLpgSQL: "#336790",
-        TSQL: "#e38c00",
-        XQuery: "#5232e7",
-        Smarty: "#f0c040",
-      };
 
       /* utility-class strings reused by the JS rendering layer (pure Tailwind, no custom selectors) */
       const CLS_LINK = "text-blue-600 hover:underline dark:text-[#58a6ff]";
@@ -405,11 +273,57 @@
       let busy = false;
 
       /* ---------- helpers ---------- */
+      /* Language name -> color. FNV-1a hash (with a splitmix32 finalizer,
+         since FNV's low bits are weak) is decoded in OKLCH — a perceptually
+         uniform space, so equal lightness actually looks equal — then
+         converted to sRGB. Bit layout: [31..8] hue, [7..3] lightness,
+         [2..0] chroma. */
+      function hashName(str) {
+        let h = 0x811c9dc5;
+        for (let i = 0; i < str.length; i++) {
+          h ^= str.charCodeAt(i);
+          h = Math.imul(h, 0x01000193);
+        }
+        h ^= h >>> 16;
+        h = Math.imul(h, 0x21f0aaad);
+        h ^= h >>> 15;
+        h = Math.imul(h, 0x735a2d97);
+        h ^= h >>> 15;
+        return h >>> 0;
+      }
+
+      function oklchToLin(L, C, hDeg) {
+        const rad = (hDeg * Math.PI) / 180;
+        const a = C * Math.cos(rad);
+        const b = C * Math.sin(rad);
+        const l = (L + 0.3963377774 * a + 0.2158037573 * b) ** 3;
+        const m = (L - 0.1055613458 * a - 0.0638541728 * b) ** 3;
+        const s = (L - 0.0894841775 * a - 1.291485548 * b) ** 3;
+        return [
+          4.0767416621 * l - 3.3077115913 * m + 0.2309699292 * s,
+          -1.2684380046 * l + 2.6097574011 * m - 0.3413193965 * s,
+          -0.0041960863 * l - 0.7034186147 * m + 1.707614701 * s,
+        ];
+      }
+
       function langColor(name) {
-        if (LANG_COLORS[name]) return LANG_COLORS[name];
-        let h = 0;
-        for (const ch of name) h = (h * 31 + ch.charCodeAt(0)) % 360;
-        return "hsl(" + h + " 65% 55%)";
+        const h32 = hashName(name);
+        const hue = ((h32 >>> 8) / 0xffffff) * 360;
+        const L = 0.63 + (((h32 >>> 3) & 0x1f) / 31) * 0.12;
+        let C = 0.105 + ((h32 & 0x7) / 7) * 0.045;
+        // Gamut-map instead of clipping: shrink chroma until the color fits
+        // sRGB, so hue and perceived lightness stay exactly as hashed.
+        let lin = oklchToLin(L, C, hue);
+        for (let i = 0; i < 10 && lin.some((v) => v < 0 || v > 1); i++) {
+          C *= 0.9;
+          lin = oklchToLin(L, C, hue);
+        }
+        const gamma = (c) => {
+          c = Math.min(Math.max(c, 0), 1);
+          return c <= 0.0031308 ? 12.92 * c : 1.055 * c ** (1 / 2.4) - 0.055;
+        };
+        const [r, g, b] = lin.map((c) => Math.round(gamma(c) * 255));
+        return "rgb(" + r + "," + g + "," + b + ")";
       }
 
       function fmtBytes(n) {
@@ -708,8 +622,8 @@
           const $bar = $("<div>").addClass(
             "flex h-2.5 rounded-[5px] overflow-hidden",
           );
-          const segs = r.entries.slice(0, 5);
-          for (const [lang, bytes] of segs) {
+          const segments = r.entries.slice(0, 5);
+          for (const [lang, bytes] of segments) {
             $bar.append(
               $("<span>")
                 .css({
@@ -719,7 +633,7 @@
                 .attr("title", lang + " · " + pct(bytes, r.bytes)),
             );
           }
-          const otherBytes = r.bytes - segs.reduce((s, [, b]) => s + b, 0);
+          const otherBytes = r.bytes - segments.reduce((s, [, b]) => s + b, 0);
           if (otherBytes > 0) {
             $bar.append(
               $("<span>")
@@ -812,7 +726,6 @@
           }
           const agg = aggregate(data);
           render(agg, data);
-          $("#updated").text(new Date().toLocaleString());
           if (!agg.languages.length)
             showBanner("info", "No language data found for this user.");
         } catch (e) {
