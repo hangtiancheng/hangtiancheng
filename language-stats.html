@@ -218,7 +218,7 @@
       >
         <span>Data: GitHub REST API</span>·<span>Charts: Chart.js</span>·<span
           >Updated <span id="updated">–</span></span
-        >·<span>Cached locally for 6 h</span>
+        >·<span>Cached locally for 24 h</span>
       </footer>
     </main>
 
@@ -240,7 +240,7 @@
       const API = "https://api.github.com";
       const CACHE_KEY = "lang-stats:" + USER;
       const TOKEN_KEY = "gh-lang-stats-token";
-      const CACHE_TTL = 6 * 60 * 60 * 1000;
+      const CACHE_TTL = 24 * 60 * 60 * 1000;
       const CONCURRENCY = 8;
 
       /* linguist colors for common languages; anything else gets a hashed hue */
