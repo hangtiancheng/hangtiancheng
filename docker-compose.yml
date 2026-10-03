@@ -1,4 +1,44 @@
 # docker compose up -d # daemon
+x-langfuse-environment: &langfuse-environment
+  NEXTAUTH_URL: ${LANGFUSE_BASE_URL:-http://localhost:3100}
+  DATABASE_URL: postgresql://${POSTGRES_USER:-yukino}:${POSTGRES_PASSWORD:-yukino}@postgres:5432/${POSTGRES_DB:-yukino_agent}
+  SALT: ${LANGFUSE_SALT}
+  ENCRYPTION_KEY: ${LANGFUSE_ENCRYPTION_KEY}
+  TELEMETRY_ENABLED: "false"
+  CLICKHOUSE_MIGRATION_URL: clickhouse://clickhouse:9000
+  CLICKHOUSE_URL: http://clickhouse:8123
+  CLICKHOUSE_USER: langfuse
+  CLICKHOUSE_PASSWORD: ${LANGFUSE_CLICKHOUSE_PASSWORD}
+  CLICKHOUSE_CLUSTER_ENABLED: "false"
+  LANGFUSE_S3_EVENT_UPLOAD_BUCKET: langfuse
+  LANGFUSE_S3_EVENT_UPLOAD_REGION: auto
+  LANGFUSE_S3_EVENT_UPLOAD_ACCESS_KEY_ID: admin
+  LANGFUSE_S3_EVENT_UPLOAD_SECRET_ACCESS_KEY: "12345678"
+  LANGFUSE_S3_EVENT_UPLOAD_ENDPOINT: http://minio:9000
+  LANGFUSE_S3_EVENT_UPLOAD_FORCE_PATH_STYLE: "true"
+  LANGFUSE_S3_EVENT_UPLOAD_PREFIX: events/
+  LANGFUSE_S3_MEDIA_UPLOAD_BUCKET: langfuse
+  LANGFUSE_S3_MEDIA_UPLOAD_REGION: auto
+  LANGFUSE_S3_MEDIA_UPLOAD_ACCESS_KEY_ID: admin
+  LANGFUSE_S3_MEDIA_UPLOAD_SECRET_ACCESS_KEY: "12345678"
+  LANGFUSE_S3_MEDIA_UPLOAD_ENDPOINT: http://minio:9000
+  LANGFUSE_S3_MEDIA_UPLOAD_FORCE_PATH_STYLE: "true"
+  LANGFUSE_S3_MEDIA_UPLOAD_PREFIX: media/
+  REDIS_HOST: redis
+  REDIS_PORT: "6379"
+
+x-langfuse-depends-on: &langfuse-depends-on
+  postgres:
+    condition: service_healthy
+  redis:
+    condition: service_healthy
+  minio:
+    condition: service_healthy
+  mc:
+    condition: service_completed_successfully
+  clickhouse:
+    condition: service_healthy
+
 services:
   # docker compose up -d mysql
   mysql:
@@ -23,13 +63,21 @@ services:
 
   # docker compose up -d redis
   redis:
-    image: redis:latest
+    image: redis/redis-stack:latest
     container_name: redis
     hostname: redis
     ports:
       - "6379:6379"
+      - "8001:8001"
     privileged: true
     restart: on-failure
+    volumes:
+      - ./volumes/redis:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
   # docker compose down redis -v
 
   # docker compose up -d mongo
@@ -61,9 +109,9 @@ services:
   # docker compose down nginx -v
 
   # docker compose up -d postgres
-  # psql -U root -W
+  # psql -U yukino -d yukino_agent -W
   postgres:
-    image: postgres:latest
+    image: postgres:16-alpine
     container_name: postgres
     hostname: postgres
     ports:
@@ -71,8 +119,20 @@ services:
     privileged: true
     restart: on-failure
     environment:
-      POSTGRES_USER: root
-      POSTGRES_PASSWORD: pass
+      POSTGRES_USER: ${POSTGRES_USER:-yukino}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-yukino}
+      POSTGRES_DB: ${POSTGRES_DB:-yukino_agent}
+    volumes:
+      - ./volumes/postgres:/var/lib/postgresql/data
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "pg_isready -U ${POSTGRES_USER:-yukino} -d ${POSTGRES_DB:-yukino_agent}",
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
   # docker compose down postgres -v
 
   # docker compose up -d ubuntu-22.04
@@ -144,11 +204,146 @@ services:
     entrypoint: >
       /bin/sh -c "
       mc alias set myminio http://minio:9000 admin 12345678;
-      mc admin user svcacct add myminio admin;
-      mc rb --force myminio/s3;
+      mc mb --ignore-existing myminio/s3;
+      mc mb --ignore-existing myminio/langfuse;
       exit 0;
       "
   # docker compose down mc -v
+  # docker compose up -d langfuse-web langfuse-worker
+  langfuse-web:
+    image: docker.langfuse.com/langfuse/langfuse:4
+    container_name: langfuse-web
+    hostname: langfuse-web
+    restart: unless-stopped
+    depends_on: *langfuse-depends-on
+    ports:
+      - "127.0.0.1:3100:3000"
+    environment:
+      <<: *langfuse-environment
+      HOSTNAME: 0.0.0.0
+      NEXTAUTH_SECRET: ${LANGFUSE_NEXTAUTH_SECRET}
+      LANGFUSE_S3_MEDIA_UPLOAD_ENDPOINT: http://localhost:9000
+      LANGFUSE_S3_MEDIA_UPLOAD_INTERNAL_ENDPOINT: http://minio:9000
+      LANGFUSE_INIT_ORG_ID: yukino-local
+      LANGFUSE_INIT_ORG_NAME: Yukino Local
+      LANGFUSE_INIT_PROJECT_ID: yukino
+      LANGFUSE_INIT_PROJECT_NAME: Yukino
+      LANGFUSE_INIT_PROJECT_PUBLIC_KEY: ${LANGFUSE_PUBLIC_KEY}
+      LANGFUSE_INIT_PROJECT_SECRET_KEY: ${LANGFUSE_SECRET_KEY}
+      LANGFUSE_INIT_USER_EMAIL: ${LANGFUSE_USER_EMAIL}
+      LANGFUSE_INIT_USER_NAME: Yukino Developer
+      LANGFUSE_INIT_USER_PASSWORD: ${LANGFUSE_USER_PASSWORD}
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "node",
+          "-e",
+          "fetch('http://localhost:3000/api/public/health?failIfDatabaseUnavailable=true').then(r=>{if(!r.ok)process.exit(1)}).catch(()=>process.exit(1))",
+        ]
+      interval: 5s
+      timeout: 5s
+      retries: 36
+      start_period: 30s
+
+  langfuse-worker:
+    image: docker.langfuse.com/langfuse/langfuse-worker:4
+    container_name: langfuse-worker
+    hostname: langfuse-worker
+    restart: unless-stopped
+    depends_on: *langfuse-depends-on
+    environment:
+      <<: *langfuse-environment
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "node",
+          "-e",
+          "fetch('http://langfuse-worker:3030/api/health').then(r=>{if(!r.ok)process.exit(1)}).catch(()=>process.exit(1))",
+        ]
+      interval: 5s
+      timeout: 5s
+      retries: 36
+      start_period: 30s
+
+  clickhouse:
+    image: clickhouse/clickhouse-server:25.12
+    container_name: clickhouse
+    hostname: clickhouse
+    restart: unless-stopped
+    user: "101:101"
+    environment:
+      CLICKHOUSE_DB: default
+      CLICKHOUSE_USER: langfuse
+      CLICKHOUSE_PASSWORD: ${LANGFUSE_CLICKHOUSE_PASSWORD}
+    volumes:
+      - ./volumes/clickhouse/data:/var/lib/clickhouse
+      - ./volumes/clickhouse/logs:/var/log/clickhouse-server
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "wget --no-verbose --tries=1 --spider http://localhost:8123/ping || exit 1",
+        ]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+  # docker compose down langfuse-web langfuse-worker clickhouse
+
+  # Milvus metadata store
+  etcd:
+    image: quay.io/coreos/etcd:v3.5.25
+    container_name: etcd
+    hostname: etcd
+    restart: unless-stopped
+    environment:
+      - ETCD_AUTO_COMPACTION_MODE=revision
+      - ETCD_AUTO_COMPACTION_RETENTION=1000
+      - ETCD_QUOTA_BACKEND_BYTES=4294967296
+      - ETCD_SNAPSHOT_COUNT=50000
+    volumes:
+      - ./volumes/etcd:/etcd
+    command: etcd -advertise-client-urls=http://etcd:2379 -listen-client-urls http://0.0.0.0:2379 --data-dir /etcd
+    healthcheck:
+      test: ["CMD", "etcdctl", "endpoint", "health"]
+      interval: 30s
+      timeout: 20s
+      retries: 3
+
+  # docker compose up -d milvus
+  milvus:
+    image: milvusdb/milvus:v3.0.1
+    container_name: milvus
+    hostname: milvus
+    restart: unless-stopped
+    command: ["milvus", "run", "standalone"]
+    security_opt:
+      - seccomp:unconfined
+    environment:
+      ETCD_ENDPOINTS: etcd:2379
+      MINIO_ADDRESS: minio:9000
+      MINIO_ACCESS_KEY_ID: admin
+      MINIO_SECRET_ACCESS_KEY: 12345678
+      MQ_TYPE: woodpecker
+    volumes:
+      - ./volumes/milvus:/var/lib/milvus
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9091/healthz"]
+      interval: 30s
+      start_period: 90s
+      timeout: 20s
+      retries: 3
+    ports:
+      - "19530:19530"
+      - "9091:9091"
+    depends_on:
+      etcd:
+        condition: service_healthy
+      minio:
+        condition: service_healthy
+  # docker compose down milvus -v
+
   # docker compose up -d kafka
   kafka:
     image: apache/kafka:latest
