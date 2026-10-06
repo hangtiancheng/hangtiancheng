@@ -1,0 +1,35 @@
+<clickhouse>
+    <listen_host replace="true">0.0.0.0</listen_host>
+    <logger>
+        <level>warning</level>
+        <console>1</console>
+        <console_log_level>warning</console_log_level>
+        <log remove="true"/>
+        <errorlog remove="true"/>
+    </logger>
+    <!-- Local tracing does not need continuous system diagnostic tables. -->
+    <!-- Langfuse v4 reads this table; keep it with a short retention. -->
+    <query_log>
+        <database>system</database>
+        <table>query_log</table>
+        <partition_by>toDate(event_time)</partition_by>
+        <ttl>event_time + INTERVAL 1 DAY DELETE</ttl>
+        <flush_interval_milliseconds>30000</flush_interval_milliseconds>
+    </query_log>
+    <query_thread_log remove="true"/>
+    <query_views_log remove="true"/>
+    <query_metric_log remove="true"/>
+    <part_log remove="true"/>
+    <trace_log remove="true"/>
+    <text_log remove="true"/>
+    <metric_log remove="true"/>
+    <asynchronous_metric_log remove="true"/>
+    <processors_profile_log remove="true"/>
+    <latency_log remove="true"/>
+    <opentelemetry_span_log remove="true"/>
+    <asynchronous_insert_log remove="true"/>
+    <session_log remove="true"/>
+    <backup_log remove="true"/>
+    <blob_storage_log remove="true"/>
+    <error_log remove="true"/>
+</clickhouse>

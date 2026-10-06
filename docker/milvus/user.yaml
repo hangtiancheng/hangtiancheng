@@ -1,0 +1,17 @@
+log:
+  level: warn
+  file:
+    rootPath: ""
+
+etcd:
+  auth:
+    enabled: false
+  log:
+    level: warn
+
+minio:
+  bucketName: milvus
+
+woodpecker:
+  log:
+    level: warn
