@@ -35,23 +35,23 @@ initialization jobs directly, use `docker compose up mc` without `--wait`.
 Versions checked on 2026-10-06. Fixed release tags keep database major versions
 predictable; mutable release channels are pinned to the manifests tested locally.
 
-| Service | Image version | Persistent directory | Local port |
-| --- | --- | --- | --- |
-| MySQL | `mysql:26.7.0` | `volumes/mysql/data` | 3306 |
-| Redis | `redis:8.10.2-alpine` | `volumes/redis/data` | 6379 |
-| MongoDB | `mongo:9.0.2` | `volumes/mongo/data`, `volumes/mongo/configdb` | 27017 |
-| PostgreSQL | `postgres:18.6-alpine` | `volumes/postgres/data/18/docker` | 5432 |
-| MinIO | Chainguard MinIO, digest pinned | `volumes/minio/data` | 9000, 9001 |
-| MinIO client | Chainguard MinIO client, digest pinned | None | None |
-| Langfuse web / worker | Official `:4` manifests reporting 4.53.0, digest pinned | Shared PostgreSQL, ClickHouse, Redis, MinIO | 3100 / internal |
-| ClickHouse | `clickhouse/clickhouse-server:26.9.11.2-alpine` | `volumes/clickhouse/data` | Internal |
-| etcd | `quay.io/coreos/etcd:v3.7.2` | `volumes/etcd/data` | Internal |
-| Milvus | `milvusdb/milvus:v3.0.2` | `volumes/milvus/data`, shared etcd and MinIO | 19530, 9091 |
-| Kafka | `apache/kafka:4.3.1` | `volumes/kafka/data`, `volumes/kafka/config`, `volumes/kafka/secrets` | 9092 |
-| Nginx | `nginx:1.31.6-alpine-slim` | `volumes/nginx/html` (website files) | 8080 |
-| Prometheus | `prom/prometheus:v3.15.0` | `volumes/prometheus/data` | 9090 |
-| Grafana | `grafana/grafana:13.2.3` | `volumes/grafana/data` | 3000 |
-| Ubuntu | `ubuntu:26.04` | `volumes/ubuntu/workspace` | None |
+| Service               | Image version                                           | Persistent directory                                                  | Local port      |
+| --------------------- | ------------------------------------------------------- | --------------------------------------------------------------------- | --------------- |
+| MySQL                 | `mysql:26.7.0`                                          | `volumes/mysql/data`                                                  | 3306            |
+| Redis                 | `redis:8.10.2-alpine`                                   | `volumes/redis/data`                                                  | 6379            |
+| MongoDB               | `mongo:9.0.2`                                           | `volumes/mongo/data`, `volumes/mongo/configdb`                        | 27017           |
+| PostgreSQL            | `postgres:18.6-alpine`                                  | `volumes/postgres/data/18/docker`                                     | 5432            |
+| MinIO                 | Chainguard MinIO, digest pinned                         | `volumes/minio/data`                                                  | 9000, 9001      |
+| MinIO client          | Chainguard MinIO client, digest pinned                  | None                                                                  | None            |
+| Langfuse web / worker | Official `:4` manifests reporting 4.53.0, digest pinned | Shared PostgreSQL, ClickHouse, Redis, MinIO                           | 3100 / internal |
+| ClickHouse            | `clickhouse/clickhouse-server:26.9.11.2-alpine`         | `volumes/clickhouse/data`                                             | Internal        |
+| etcd                  | `quay.io/coreos/etcd:v3.7.2`                            | `volumes/etcd/data`                                                   | Internal        |
+| Milvus                | `milvusdb/milvus:v3.0.2`                                | `volumes/milvus/data`, shared etcd and MinIO                          | 19530, 9091     |
+| Kafka                 | `apache/kafka:4.3.1`                                    | `volumes/kafka/data`, `volumes/kafka/config`, `volumes/kafka/secrets` | 9092            |
+| Nginx                 | `nginx:1.31.6-alpine-slim`                              | `volumes/nginx/html` (website files)                                  | 8080            |
+| Prometheus            | `prom/prometheus:v3.15.0`                               | `volumes/prometheus/data`                                             | 9090            |
+| Grafana               | `grafana/grafana:13.2.3`                                | `volumes/grafana/data`                                                | 3000            |
+| Ubuntu                | `ubuntu:26.04`                                          | `volumes/ubuntu/workspace`                                            | None            |
 
 The PostgreSQL mount targets `/var/lib/postgresql`, as required by the PostgreSQL
 18+ image layout. Old database directories are not migrated. MinIO initializes the
