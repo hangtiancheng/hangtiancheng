@@ -4,7 +4,8 @@ x-images:
   mongo: &mongo-image mongo:9.0.2
   postgres: &postgres-image postgres:18.6-alpine
   nginx: &nginx-image nginx:1.31.6-alpine-slim
-  ubuntu: &ubuntu-image ubuntu:26.04
+  ubuntu: &ubuntu22-image ubuntu:22.04
+  ubuntu24: &ubuntu24-image ubuntu:24.04
   minio: &minio-image cgr.dev/chainguard/minio:latest@sha256:a05a4497e8dce3cb7a7a1bf1872ba5d30ea988f1e8c22c9e0920503761c4b5f1
   mc: &mc-image cgr.dev/chainguard/minio-client:latest@sha256:487ea889cfb126aeb8d51405dd8d2f8426da33734a8369338814c4eebe0179e6
   langfuse-web: &langfuse-web-image docker.langfuse.com/langfuse/langfuse:4@sha256:3ab2b36e54c5b6d424db43b3365689e8c2ef46f309dbb6a07c869213ef15a6d8
@@ -24,6 +25,16 @@ x-service: &service
       max-size: "5m"
       max-file: "2"
       compress: "true"
+
+x-ubuntu-proxy-environment: &ubuntu-proxy-environment
+  http_proxy: &ubuntu-proxy-url ${UBUNTU_PROXY_URL-http://host.docker.internal:7897}
+  https_proxy: *ubuntu-proxy-url
+  HTTP_PROXY: *ubuntu-proxy-url
+  HTTPS_PROXY: *ubuntu-proxy-url
+  all_proxy: *ubuntu-proxy-url
+  ALL_PROXY: *ubuntu-proxy-url
+  no_proxy: &ubuntu-no-proxy ${UBUNTU_NO_PROXY:-localhost,127.0.0.1,::1,host.docker.internal,.local,mysql,redis,mongo,postgres,minio,langfuse-web,langfuse-worker,clickhouse,etcd,milvus,kafka,nginx,prometheus,grafana,ubuntu22,ubuntu24}
+  NO_PROXY: *ubuntu-no-proxy
 
 x-langfuse-environment: &langfuse-environment
   NEXTAUTH_URL: ${LANGFUSE_BASE_URL:-http://localhost:3100}
@@ -466,13 +477,26 @@ services:
       prometheus:
         condition: service_healthy
 
-  ubuntu:
+  ubuntu22:
     <<: *service
-    image: *ubuntu-image
+    image: *ubuntu22-image
     profiles: [tools]
+    environment: *ubuntu-proxy-environment
     stdin_open: true
     tty: true
     command: ["/bin/bash"]
     working_dir: /workspace
     volumes:
-      - ./volumes/ubuntu/workspace:/workspace
+      - ./volumes/ubuntu22/workspace:/workspace
+
+  ubuntu24:
+    <<: *service
+    image: *ubuntu24-image
+    profiles: [tools]
+    environment: *ubuntu-proxy-environment
+    stdin_open: true
+    tty: true
+    command: ["/bin/bash"]
+    working_dir: /workspace
+    volumes:
+      - ./volumes/ubuntu24/workspace:/workspace

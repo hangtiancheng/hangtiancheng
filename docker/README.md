@@ -18,17 +18,51 @@ docker compose up -d --wait langfuse-web langfuse-worker
 docker compose up -d --wait milvus
 docker compose up -d --wait nginx prometheus grafana
 docker compose up -d --wait mongo postgres kafka
-docker compose up -d ubuntu
-docker compose exec ubuntu bash
+docker compose up -d ubuntu22 ubuntu24
+docker compose exec ubuntu22 bash
+docker compose exec ubuntu24 bash
 ```
 
-Ubuntu 26.04 is the only Ubuntu service and belongs to the `tools` profile; naming it
-explicitly starts it. `docker compose up -d --wait` starts all other services, including
-the heavier tracing and vector workloads. Choose services explicitly on a small machine.
+Ubuntu 22.04 (`ubuntu22`) and Ubuntu 24.04 (`ubuntu24`) belong to the `tools` profile;
+naming them explicitly starts them. `docker compose up -d --wait` starts all other
+services, including the heavier tracing and vector workloads. Choose services
+explicitly on a small machine.
 
 `mc` and `milvus-volume-init` are initialization jobs, not additional servers. They
 finish with exit code zero. Start their consumers with `--wait`; when running the
 initialization jobs directly, use `docker compose up mc` without `--wait`.
+
+## Ubuntu host proxy
+
+Both Ubuntu services share proxy environment variables pointing to
+`http://host.docker.internal:7897` by default. On Docker Desktop for macOS,
+[`host.docker.internal`](https://docs.docker.com/reference/cli/docker/container/run/#add-entries-to-container-hosts-file---add-host)
+resolves to the host; `127.0.0.1` inside a container refers to that container.
+The default port matches the local Clash Verge mixed HTTP/SOCKS proxy.
+Keep Clash running with **Allow LAN** enabled and a bind address that accepts
+container connections (the local configuration currently uses `*`).
+
+Override the proxy endpoint in `.env` if the host proxy uses another HTTP or mixed
+port, for example:
+
+```dotenv
+UBUNTU_PROXY_URL=http://host.docker.internal:7890
+```
+
+Apply changes by recreating just the Ubuntu services:
+
+```sh
+docker compose up -d ubuntu22 ubuntu24
+```
+
+Lowercase and uppercase `HTTP_PROXY`, `HTTPS_PROXY`, `ALL_PROXY`, and `NO_PROXY`
+variables are set for tools that support them, such as `apt`, `curl`, and Git over
+HTTP(S). HTTPS destinations also use the `http://` proxy URL through HTTP CONNECT.
+Localhost and the Compose service names bypass the proxy. Set `UBUNTU_NO_PROXY`
+in `.env` to override the comma-separated bypass list, or `UBUNTU_PROXY_URL=` to
+disable these proxy variables. Programs that ignore proxy environment variables,
+including SSH, need their own proxy configuration. Docker image pulls use
+[Docker Desktop's proxy settings](https://docs.docker.com/desktop/features/networking/#using-docker-desktop-with-a-proxy).
 
 ## Images and storage
 
@@ -51,7 +85,8 @@ predictable; mutable release channels are pinned to the manifests tested locally
 | Nginx                 | `nginx:1.31.6-alpine-slim`                              | `volumes/nginx/html` (website files)                                  | 8080            |
 | Prometheus            | `prom/prometheus:v3.15.0`                               | `volumes/prometheus/data`                                             | 9090            |
 | Grafana               | `grafana/grafana:13.2.3`                                | `volumes/grafana/data`                                                | 3000            |
-| Ubuntu                | `ubuntu:26.04`                                          | `volumes/ubuntu/workspace`                                            | None            |
+| Ubuntu 22 (`ubuntu22`) | `ubuntu:22.04`                                          | `volumes/ubuntu22/workspace`                                          | None            |
+| Ubuntu 24 (`ubuntu24`) | `ubuntu:24.04`                                          | `volumes/ubuntu24/workspace`                                          | None            |
 
 The PostgreSQL mount targets `/var/lib/postgresql`, as required by the PostgreSQL
 18+ image layout. Old database directories are not migrated. MinIO initializes the
