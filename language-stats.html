@@ -217,7 +217,6 @@
     <script>
       "use strict";
 
-      /* ---------- config ---------- */
       const params = new URLSearchParams(location.search);
       const USER = (params.get("user") || "hangtiancheng").replace(
         /[^a-zA-Z0-9-]/g,
@@ -229,7 +228,6 @@
       const CACHE_TTL = 24 * 60 * 60 * 1000;
       const CONCURRENCY = 8;
 
-      /* utility-class strings reused by the JS rendering layer (pure Tailwind, no custom selectors) */
       const CLS_LINK = "text-blue-600 hover:underline dark:text-[#58a6ff]";
       const CLS_MUTED = "text-gray-500 dark:text-[#8b949e]";
       const CLS_DOT = "inline-block w-2.5 h-2.5 rounded-full shrink-0";
@@ -253,16 +251,12 @@
         set(k, v) {
           try {
             localStorage.setItem(k, v);
-          } catch {
-            /* private mode */
-          }
+          } catch {}
         },
         del(k) {
           try {
             localStorage.removeItem(k);
-          } catch {
-            /* private mode */
-          }
+          } catch {}
         },
       };
 
@@ -272,12 +266,6 @@
       let lastAgg = null;
       let busy = false;
 
-      /* ---------- helpers ---------- */
-      /* Language name -> color. FNV-1a hash (with a splitmix32 finalizer,
-         since FNV's low bits are weak) is decoded in OKLCH — a perceptually
-         uniform space, so equal lightness actually looks equal — then
-         converted to sRGB. Bit layout: [31..8] hue, [7..3] lightness,
-         [2..0] chroma. */
       function hashName(str) {
         let h = 0x811c9dc5;
         for (let i = 0; i < str.length; i++) {
@@ -311,8 +299,6 @@
         const hue = ((h32 >>> 8) / 0xffffff) * 360;
         const L = 0.63 + (((h32 >>> 3) & 0x1f) / 31) * 0.12;
         let C = 0.105 + ((h32 & 0x7) / 7) * 0.045;
-        // Gamut-map instead of clipping: shrink chroma until the color fits
-        // sRGB, so hue and perceived lightness stay exactly as hashed.
         let lin = oklchToLin(L, C, hue);
         for (let i = 0; i < 10 && lin.some((v) => v < 0 || v > 1); i++) {
           C *= 0.9;
@@ -353,7 +339,6 @@
           : { fg: "#1f2328", muted: "#656d76", grid: "rgba(31, 35, 40, .1)" };
       }
 
-      /* ---------- GitHub API ---------- */
       async function gh(path) {
         const headers = {
           Accept: "application/vnd.github+json",
@@ -423,7 +408,7 @@
                     "/languages",
                 );
               } catch (e) {
-                if (e.rateLimit) throw e; // abort the whole run; keep partial gaps otherwise
+                if (e.rateLimit) throw e;
               }
               out[i] = { name: repo.name, url: repo.html_url, langs };
               onProgress(++done, picked.length);
@@ -460,7 +445,6 @@
         return { languages, repos, totalBytes, repoCount: data.repos.length };
       }
 
-      /* ---------- rendering (jQuery) ---------- */
       function render(agg, data) {
         lastAgg = agg;
 
@@ -669,7 +653,6 @@
         }
       }
 
-      /* ---------- UI plumbing ---------- */
       function showBanner(kind, text) {
         $("#banner")
           .attr("class", BANNER_BASE + " " + BANNER_VARIANTS[kind])
@@ -710,9 +693,7 @@
               ) {
                 data = cached.data;
               }
-            } catch {
-              /* corrupt cache -> refetch */
-            }
+            } catch {}
           }
           if (!data) {
             progress("Fetching profile…");
@@ -749,7 +730,6 @@
         }
       }
 
-      /* ---------- init ---------- */
       $(function () {
         $("#user-link")
           .text("@" + USER)
@@ -775,7 +755,6 @@
           load(true);
         });
 
-        /* re-theme charts when the OS color scheme flips */
         darkMQ.addEventListener("change", () => {
           if (lastAgg) renderCharts(lastAgg);
         });

@@ -7,8 +7,6 @@
     <log remove="true" />
     <errorlog remove="true" />
   </logger>
-  <!-- Local tracing does not need continuous system diagnostic tables. -->
-  <!-- Langfuse v4 reads this table; keep it with a short retention. -->
   <query_log>
     <database>system</database>
     <table>query_log</table>

@@ -1,5 +1,3 @@
-# Start only what you need: docker compose up -d mysql redis
-# Image versions were checked against upstream releases on 2026-10-06.
 x-images:
   mysql: &mysql-image mysql:26.7.0
   redis: &redis-image redis:8.10.2-alpine
@@ -7,10 +5,8 @@ x-images:
   postgres: &postgres-image postgres:18.6-alpine
   nginx: &nginx-image nginx:1.31.6-alpine-slim
   ubuntu: &ubuntu-image ubuntu:26.04
-  # MinIO Community is archived; this is the build recommended by Langfuse.
   minio: &minio-image cgr.dev/chainguard/minio:latest@sha256:a05a4497e8dce3cb7a7a1bf1872ba5d30ea988f1e8c22c9e0920503761c4b5f1
   mc: &mc-image cgr.dev/chainguard/minio-client:latest@sha256:487ea889cfb126aeb8d51405dd8d2f8426da33734a8369338814c4eebe0179e6
-  # Both manifests report 4.53.0 and the same source revision.
   langfuse-web: &langfuse-web-image docker.langfuse.com/langfuse/langfuse:4@sha256:3ab2b36e54c5b6d424db43b3365689e8c2ef46f309dbb6a07c869213ef15a6d8
   langfuse-worker: &langfuse-worker-image docker.langfuse.com/langfuse/langfuse-worker:4@sha256:ebab1e2e314f6aace8040bcc1cd29f66a0407151dfa79c6cdb1ea5ef15ceb46f
   clickhouse: &clickhouse-image clickhouse/clickhouse-server:26.9.11.2-alpine
@@ -69,7 +65,6 @@ x-langfuse-depends-on: &langfuse-depends-on
     condition: service_healthy
 
 services:
-  # Databases: all persistent files stay under ./volumes/<service>/.
   mysql:
     <<: *service
     image: *mysql-image
@@ -83,13 +78,16 @@ services:
       TZ: Asia/Shanghai
     command:
       - --log-error-verbosity=2
-      # Local development: avoid retaining replication binary logs.
       - --skip-log-bin
     volumes:
       - ./volumes/mysql/data:/var/lib/mysql
       - ./sql:/docker-entrypoint-initdb.d:ro
     healthcheck:
-      test: ["CMD-SHELL", 'MYSQL_PWD="$$MYSQL_PASSWORD" mysql -u "$$MYSQL_USER" -D "$$MYSQL_DATABASE" -e "SELECT 1" >/dev/null']
+      test:
+        [
+          "CMD-SHELL",
+          'MYSQL_PWD="$$MYSQL_PASSWORD" mysql -u "$$MYSQL_USER" -D "$$MYSQL_DATABASE" -e "SELECT 1" >/dev/null',
+        ]
       interval: 10s
       timeout: 5s
       retries: 12
@@ -128,13 +126,22 @@ services:
       MONGO_INITDB_DATABASE: db0
       MONGO_INITDB_ROOT_USERNAME: root
       MONGO_INITDB_ROOT_PASSWORD: pass
-    # MongoDB has no global warn threshold; quiet suppresses routine activity.
-    command: ["mongod", "--quiet", "--setParameter", "diagnosticDataCollectionEnabled=false"]
+    command:
+      [
+        "mongod",
+        "--quiet",
+        "--setParameter",
+        "diagnosticDataCollectionEnabled=false",
+      ]
     volumes:
       - ./volumes/mongo/data:/data/db
       - ./volumes/mongo/configdb:/data/configdb
     healthcheck:
-      test: ["CMD-SHELL", 'mongosh --quiet -u "$$MONGO_INITDB_ROOT_USERNAME" -p "$$MONGO_INITDB_ROOT_PASSWORD" --authenticationDatabase admin --eval "quit(db.adminCommand({ping: 1}).ok ? 0 : 1)"']
+      test:
+        [
+          "CMD-SHELL",
+          'mongosh --quiet -u "$$MONGO_INITDB_ROOT_USERNAME" -p "$$MONGO_INITDB_ROOT_PASSWORD" --authenticationDatabase admin --eval "quit(db.adminCommand({ping: 1}).ok ? 0 : 1)"',
+        ]
       interval: 30s
       timeout: 10s
       retries: 6
@@ -159,7 +166,6 @@ services:
       - logging_collector=off
       - -c
       - log_statement=none
-    # PostgreSQL 18+ uses /var/lib/postgresql/18/docker as PGDATA.
     volumes:
       - ./volumes/postgres/data:/var/lib/postgresql
     healthcheck:
@@ -169,7 +175,6 @@ services:
       retries: 6
       start_period: 10s
 
-  # Shared object storage for Langfuse and Milvus.
   minio:
     <<: *service
     image: *minio-image
@@ -198,9 +203,9 @@ services:
         condition: service_healthy
     environment:
       MC_HOST_local: http://${MINIO_ROOT_USER:-admin}:${MINIO_ROOT_PASSWORD:-12345678}@minio:9000
-    command: ["--quiet", "mb", "--ignore-existing", "local/milvus", "local/langfuse"]
+    command:
+      ["--quiet", "mb", "--ignore-existing", "local/milvus", "local/langfuse"]
 
-  # Tracing: docker compose up -d langfuse-web langfuse-worker
   langfuse-web:
     <<: *service
     image: *langfuse-web-image
@@ -223,7 +228,13 @@ services:
       LANGFUSE_INIT_USER_NAME: Yukino Developer
       LANGFUSE_INIT_USER_PASSWORD: ${LANGFUSE_USER_PASSWORD}
     healthcheck:
-      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:3000/api/public/health?failIfDatabaseUnavailable=true').then(r=>{if(!r.ok)process.exit(1)}).catch(()=>process.exit(1))"]
+      test:
+        [
+          "CMD",
+          "node",
+          "-e",
+          "fetch('http://127.0.0.1:3000/api/public/health?failIfDatabaseUnavailable=true').then(r=>{if(!r.ok)process.exit(1)}).catch(()=>process.exit(1))",
+        ]
       interval: 15s
       timeout: 5s
       retries: 24
@@ -237,7 +248,13 @@ services:
       <<: *langfuse-environment
       HOSTNAME: 0.0.0.0
     healthcheck:
-      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:3030/api/health').then(r=>{if(!r.ok)process.exit(1)}).catch(()=>process.exit(1))"]
+      test:
+        [
+          "CMD",
+          "node",
+          "-e",
+          "fetch('http://127.0.0.1:3030/api/health').then(r=>{if(!r.ok)process.exit(1)}).catch(()=>process.exit(1))",
+        ]
       interval: 15s
       timeout: 5s
       retries: 24
@@ -263,7 +280,6 @@ services:
       retries: 12
       start_period: 15s
 
-  # Vector storage: docker compose up -d milvus
   etcd:
     <<: *service
     image: *etcd-image
@@ -339,7 +355,6 @@ services:
       mc:
         condition: service_completed_successfully
 
-  # Message broker: host clients use localhost:9092; containers use kafka:19092.
   kafka:
     <<: *service
     image: *kafka-image
@@ -360,7 +375,6 @@ services:
       KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
       KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS: 0
       KAFKA_LOG_DIRS: /var/lib/kafka/data
-      # Kafka data retention is per partition; this is not the application log.
       KAFKA_LOG_RETENTION_HOURS: 24
       KAFKA_LOG_RETENTION_BYTES: 268435456
       KAFKA_LOG_SEGMENT_BYTES: 67108864
@@ -374,13 +388,19 @@ services:
       - ./volumes/kafka/config:/mnt/shared/config
       - ./docker/kafka/log4j2.yaml:/etc/kafka/log4j2.yaml:ro
     healthcheck:
-      test: ["CMD", "/opt/kafka/bin/kafka-topics.sh", "--bootstrap-server", "kafka:19092", "--list"]
+      test:
+        [
+          "CMD",
+          "/opt/kafka/bin/kafka-topics.sh",
+          "--bootstrap-server",
+          "kafka:19092",
+          "--list",
+        ]
       interval: 30s
       timeout: 10s
       retries: 6
       start_period: 30s
 
-  # HTTP and monitoring.
   nginx:
     <<: *service
     image: *nginx-image
@@ -436,7 +456,8 @@ services:
       - ./volumes/grafana/data:/var/lib/grafana
       - ./docker/grafana/datasources.yml:/etc/grafana/provisioning/datasources/local.yml:ro
     healthcheck:
-      test: ["CMD-SHELL", "wget -q -O /dev/null http://127.0.0.1:3000/api/health"]
+      test:
+        ["CMD-SHELL", "wget -q -O /dev/null http://127.0.0.1:3000/api/health"]
       interval: 15s
       timeout: 5s
       retries: 6
@@ -445,7 +466,6 @@ services:
       prometheus:
         condition: service_healthy
 
-  # One Ubuntu LTS service, started explicitly when needed.
   ubuntu:
     <<: *service
     image: *ubuntu-image
