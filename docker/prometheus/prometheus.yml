@@ -12,3 +12,15 @@ scrape_configs:
   - job_name: grafana
     static_configs:
       - targets: ["grafana:3000"]
+  - job_name: be261028-gateway
+    metrics_path: /metrics
+    static_configs:
+      - targets: ["host.docker.internal:8091"]
+  - job_name: be261028-activity
+    metrics_path: /metrics
+    static_configs:
+      - targets: ["host.docker.internal:19101"]
+  - job_name: be261028-trade
+    metrics_path: /metrics
+    static_configs:
+      - targets: ["host.docker.internal:19102"]
